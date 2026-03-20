@@ -1,0 +1,105 @@
+Notebook[{
+
+Cell["EXTKIN: Exact Rational Kinematics Package", "Title"],
+
+Cell["Examples and Usage Guide", "Subtitle"],
+
+Cell[CellGroupData[{
+Cell["1. Loading the Package", "Section"],
+Cell["Load EXTKIN by providing the full path to EXTKIN.m:", "Text"],
+Cell[BoxData[RowBox[{"Get", "[", "\"/path/to/EXTKIN/EXTKIN.m\"", "]"}]], "Input"]
+}]],
+
+Cell[CellGroupData[{
+Cell["2. Generic Kinematic Points", "Section"],
+
+Cell["Generate a random rational 6-point kinematic point:", "Text"],
+Cell[BoxData[RowBox[{"kin", " ", "=", " ", RowBox[{"RandomRationalKinematics", "[", "6", "]"}]}]], "Input"],
+
+Cell["Access the components:", "Text"],
+Cell[BoxData[RowBox[{"kin", "[", "\"lambda\"", "]"}]], "Input"],
+Cell[BoxData[RowBox[{"kin", "[", "\"lambdaTilde\"", "]"}]], "Input"],
+Cell[BoxData[RowBox[{"kin", "[", "\"mandelstams\"", "]"}]], "Input"],
+Cell[BoxData[RowBox[{"kin", "[", "\"spinorProducts\"", "]"}]], "Input"],
+
+Cell["Validate the kinematic point:", "Text"],
+Cell[BoxData[RowBox[{"ValidateKinematics", "[", "kin", "]"}]], "Input"],
+
+Cell["Generate at different multiplicities:", "Text"],
+Cell[BoxData[RowBox[{"kin4", " ", "=", " ", RowBox[{"RandomRationalKinematics", "[", "4", "]"}]}]], "Input"],
+Cell[BoxData[RowBox[{"kin8", " ", "=", " ", RowBox[{"RandomRationalKinematics", "[", "8", "]"}]}]], "Input"],
+Cell[BoxData[RowBox[{"kin10", " ", "=", " ", RowBox[{"RandomRationalKinematics", "[", "10", "]"}]}]], "Input"]
+}]],
+
+Cell[CellGroupData[{
+Cell["3. Working with Spinors Directly", "Section"],
+
+Cell["Generate raw spinors:", "Text"],
+Cell[BoxData[RowBox[{RowBox[{"{", RowBox[{"lam", ",", " ", "lamT"}], "}"}], " ", "=", " ", RowBox[{"RandomRationalSpinors", "[", "6", "]"}]}]], "Input"],
+
+Cell["Compute individual brackets:", "Text"],
+Cell[BoxData[RowBox[{"AngleBracket", "[", RowBox[{"lam", ",", " ", "1", ",", " ", "2"}], "]"}]], "Input"],
+Cell[BoxData[RowBox[{"SquareBracket", "[", RowBox[{"lamT", ",", " ", "3", ",", " ", "5"}], "]"}]], "Input"],
+
+Cell["Compute a single momentum:", "Text"],
+Cell[BoxData[RowBox[{"MomentumFromSpinors", "[", RowBox[{RowBox[{"lam", "[", RowBox[{"[", "1", "]"}], "]"}], ",", " ", RowBox[{"lamT", "[", RowBox[{"[", "1", "]"}], "]"}]}], "]"}]], "Input"],
+
+Cell["Compute all Mandelstams:", "Text"],
+Cell[BoxData[RowBox[{"MandelstamFromSpinors", "[", RowBox[{"lam", ",", " ", "lamT"}], "]"}]], "Input"],
+
+Cell["Use options to control generation:", "Text"],
+Cell[BoxData[RowBox[{RowBox[{"{", RowBox[{"lam", ",", " ", "lamT"}], "}"}], " ", "=", " ", RowBox[{"RandomRationalSpinors", "[", RowBox[{"6", ",", " ", RowBox[{"\"Range\"", " ", "->", " ", "50"}], ",", " ", RowBox[{"\"NonDegenerate\"", " ", "->", " ", "True"}]}], "]"}]}]], "Input"]
+}]],
+
+Cell[CellGroupData[{
+Cell["4. Kinematics on Poles", "Section"],
+
+Cell["Single two-particle pole (angle type):", "Text"],
+Cell[BoxData[RowBox[{"kinPole", " ", "=", " ", RowBox[{"RandomRationalKinematicsOnPole", "[", RowBox[{"6", ",", " ", RowBox[{"{", RowBox[{"{", RowBox[{"1", ",", " ", "2"}], "}"}], "}"}], ",", "\n", "  ", RowBox[{"\"TwoParticlePoleType\"", " ", "->", " ", "\"Angle\""}]}], "]"}]}]], "Input"],
+
+Cell["Verify the pole:", "Text"],
+Cell[BoxData[RowBox[{"kinPole", "[", "\"mandelstams\"", "]"}]], "Input"],
+Cell[BoxData[RowBox[{RowBox[{"kinPole", "[", "\"spinorProducts\"", "]"}], "[", "\"angle\"", "]"}]], "Input"],
+
+Cell["Single two-particle pole (square type):", "Text"],
+Cell[BoxData[RowBox[{"kinSqPole", " ", "=", " ", RowBox[{"RandomRationalKinematicsOnPole", "[", RowBox[{"6", ",", " ", RowBox[{"{", RowBox[{"{", RowBox[{"1", ",", " ", "2"}], "}"}], "}"}], ",", "\n", "  ", RowBox[{"\"TwoParticlePoleType\"", " ", "->", " ", "\"Square\""}]}], "]"}]}]], "Input"],
+
+Cell["Multi-particle pole:", "Text"],
+Cell[BoxData[RowBox[{"kinS123", " ", "=", " ", RowBox[{"RandomRationalKinematicsOnPole", "[", RowBox[{"6", ",", " ", RowBox[{"{", RowBox[{"{", RowBox[{"1", ",", " ", "2", ",", " ", "3"}], "}"}], "}"}]}], "]"}]}]], "Input"],
+
+Cell["Multiple simultaneous poles:", "Text"],
+Cell[BoxData[RowBox[{"kinMulti", " ", "=", " ", RowBox[{"RandomRationalKinematicsOnPole", "[", RowBox[{"7", ",", " ", RowBox[{"{", RowBox[{RowBox[{"{", RowBox[{"1", ",", " ", "2"}], "}"}], ",", " ", RowBox[{"{", RowBox[{"3", ",", " ", "4"}], "}"}]}], "}"}], ",", "\n", "  ", RowBox[{"\"TwoParticlePoleType\"", " ", "->", " ", "\"Square\""}]}], "]"}]}]], "Input"],
+
+Cell["Mixed poles (two-particle + multi-particle):", "Text"],
+Cell[BoxData[RowBox[{"kinMixed", " ", "=", " ", RowBox[{"RandomRationalKinematicsOnPole", "[", RowBox[{"7", ",", " ", RowBox[{"{", RowBox[{RowBox[{"{", RowBox[{"1", ",", " ", "2"}], "}"}], ",", " ", RowBox[{"{", RowBox[{"3", ",", " ", "4", ",", " ", "5"}], "}"}]}], "}"}], ",", "\n", "  ", RowBox[{"\"TwoParticlePoleType\"", " ", "->", " ", RowBox[{"{", RowBox[{RowBox[{"{", RowBox[{"1", ",", " ", "2"}], "}"}], " ", "->", " ", "\"Angle\""}], "}"}]}]}], "]"}]}]], "Input"],
+
+Cell["Per-pole type specification:", "Text"],
+Cell[BoxData[RowBox[{"kinPerPole", " ", "=", " ", RowBox[{"RandomRationalKinematicsOnPole", "[", RowBox[{"8", ",", " ", RowBox[{"{", RowBox[{RowBox[{"{", RowBox[{"1", ",", " ", "2"}], "}"}], ",", " ", RowBox[{"{", RowBox[{"3", ",", " ", "4"}], "}"}]}], "}"}], ",", "\n", "  ", RowBox[{"\"TwoParticlePoleType\"", " ", "->", " ", RowBox[{"{", RowBox[{RowBox[{RowBox[{"{", RowBox[{"1", ",", " ", "2"}], "}"}], " ", "->", " ", "\"Angle\""}], ",", " ", RowBox[{RowBox[{"{", RowBox[{"3", ",", " ", "4"}], "}"}], " ", "->", " ", "\"Square\""}]}], "}"}]}]}], "]"}]}]], "Input"],
+
+Cell["Incompatible poles return $Failed:", "Text"],
+Cell[BoxData[RowBox[{"RandomRationalKinematicsOnPole", "[", RowBox[{"4", ",", " ", RowBox[{"{", RowBox[{RowBox[{"{", RowBox[{"1", ",", " ", "2"}], "}"}], ",", " ", RowBox[{"{", RowBox[{"1", ",", " ", "3"}], "}"}]}], "}"}], ",", "\n", "  ", RowBox[{"\"TwoParticlePoleType\"", " ", "->", " ", "\"Angle\""}], ",", " ", RowBox[{"\"MaxAttempts\"", " ", "->", " ", "100"}]}], "]"}]], "Input"]
+}]],
+
+Cell[CellGroupData[{
+Cell["5. Validation", "Section"],
+
+Cell["Full validation of any kinematic point:", "Text"],
+Cell[BoxData[RowBox[{"kin", " ", "=", " ", RowBox[{"RandomRationalKinematics", "[", "6", "]"}]}]], "Input"],
+Cell[BoxData[RowBox[{"ValidateKinematics", "[", "kin", "]"}]], "Input"],
+
+Cell["Validation of pole kinematics:", "Text"],
+Cell[BoxData[RowBox[{"kinPole", " ", "=", " ", RowBox[{"RandomRationalKinematicsOnPole", "[", RowBox[{"6", ",", " ", RowBox[{"{", RowBox[{"{", RowBox[{"1", ",", " ", "2", ",", " ", "3"}], "}"}], "}"}]}], "]"}]}]], "Input"],
+Cell[BoxData[RowBox[{"ValidateKinematics", "[", "kinPole", "]"}]], "Input"]
+}]],
+
+Cell[CellGroupData[{
+Cell["6. Convention Reference", "Section"],
+Cell["The Mandelstam invariant convention used in this package is:\n\n  \
+s_{ij} = <ij>[ij]\n\nwhere <ij> = AngleBracket and [ij] = SquareBracket with the \
+same index ordering on both. This is symmetric: s_{ij} = s_{ji}.\n\n\
+Multi-particle Mandelstams:\n  s_I = Sum_{i<j in I} s_{ij}\n\n\
+Row sums vanish by momentum conservation:\n  Sum_{j != i} s_{ij} = 0\n\n\
+Complement identity: s_I = s_{I^c}", "Text"]
+}]]
+
+}, StyleDefinitions -> "Default.nb"]
