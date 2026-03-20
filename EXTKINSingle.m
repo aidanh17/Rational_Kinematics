@@ -24,6 +24,7 @@ MandelstamFromSpinors::usage = "MandelstamFromSpinors[lam, lamT] computes all Ma
 RandomRationalKinematics::usage = "RandomRationalKinematics[n] generates a complete rational kinematic point.";
 RandomRationalKinematicsOnPole::usage = "RandomRationalKinematicsOnPole[n, poles] generates kinematics with specified Mandelstams vanishing.";
 ValidateKinematics::usage = "ValidateKinematics[kin] checks all kinematic identities.";
+IsNonDegenerate::usage = "IsNonDegenerate[kin] returns True if all brackets and Mandelstams are non-zero. IsNonDegenerate[kin, expectedZeroPoles] excludes specified poles from the check.";
 
 RandomRationalSpinors::nodegen = "Failed to generate non-degenerate spinors after `1` attempts.";
 RandomRationalKinematicsOnPole::failed = "Failed after `1` attempts: `2`";
@@ -450,6 +451,42 @@ ValidateKinematics[kin_Association] := Module[
   AppendTo[issues, "PASS: Complement identity"];
 
   If[passed, True, {False, issues}]
+];
+
+(* ======================================================================== *)
+(* NON-DEGENERACY CHECK (public interface)                                  *)
+(* ======================================================================== *)
+
+IsNonDegenerate[kin_Association] := Module[{n, lam, lamT},
+  n = kin["n"]; lam = kin["lambda"]; lamT = kin["lambdaTilde"];
+  checkNonDegenerate[lam, lamT, n]
+];
+
+IsNonDegenerate[kin_Association, expectedZeroPoles_List] := Module[
+  {n, lam, lamT, sortedPoles, bracketPairs, i, j, k, sub, subsets, sI},
+  n = kin["n"]; lam = kin["lambda"]; lamT = kin["lambdaTilde"];
+  sortedPoles = Union[Sort /@ expectedZeroPoles];
+  bracketPairs = Select[sortedPoles, Length[#] == 2 &];
+
+  (* Check 2-point brackets: non-zero unless on expected pole *)
+  Do[
+    If[!MemberQ[bracketPairs, Sort[{i, j}]],
+      If[AngleBracket[lam, i, j] === 0, Return[False, Module]];
+      If[SquareBracket[lamT, i, j] === 0, Return[False, Module]]],
+    {i, n}, {j, i + 1, n}];
+
+  (* Check multi-particle Mandelstams: non-zero unless expected *)
+  Do[
+    subsets = Subsets[Range[n], {k}];
+    Do[
+      If[!MemberQ[sortedPoles, Sort[sub]] &&
+         !MemberQ[sortedPoles, Sort[Complement[Range[n], sub]]],
+        sI = computeMandelstamSubset[lam, lamT, sub];
+        If[sI === 0, Return[False, Module]]],
+      {sub, subsets}],
+    {k, 2, Floor[n/2]}];
+
+  True
 ];
 
 End[];
