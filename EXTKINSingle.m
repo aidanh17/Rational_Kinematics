@@ -25,6 +25,9 @@ RandomRationalKinematics::usage = "RandomRationalKinematics[n] generates a compl
 RandomRationalKinematicsOnPole::usage = "RandomRationalKinematicsOnPole[n, poles] generates kinematics with specified Mandelstams vanishing.";
 ValidateKinematics::usage = "ValidateKinematics[kin] checks all kinematic identities.";
 IsNonDegenerate::usage = "IsNonDegenerate[kin] returns True if all brackets and Mandelstams are non-zero. IsNonDegenerate[kin, expectedZeroPoles] excludes specified poles from the check.";
+RandomModularKinematics::usage = "RandomModularKinematics[n, p] generates a complete n-point kinematic point over GF(p). All spinor components, brackets, and Mandelstams are integers mod p. For finite-field linear algebra: evaluate constraints mod p, solve mod p, repeat for multiple primes, reconstruct via CRT.";
+RandomModularKinematicsOnPole::usage = "RandomModularKinematicsOnPole[n, poles, p] generates modular kinematics with specified Mandelstams vanishing mod p.";
+ModularKinToRules::usage = "ModularKinToRules[kin, p] converts a modular kinematics Association to replacement rules {ang[i,j] -> value mod p, ...}.";
 
 RandomRationalSpinors::nodegen = "Failed to generate non-degenerate spinors after `1` attempts.";
 RandomRationalKinematicsOnPole::failed = "Failed after `1` attempts: `2`";
@@ -487,6 +490,112 @@ IsNonDegenerate[kin_Association, expectedZeroPoles_List] := Module[
     {k, 2, Floor[n/2]}];
 
   True
+];
+
+(* ======================================================================== *)
+(* MODULAR KINEMATICS (GF(p))                                              *)
+(* ======================================================================== *)
+
+(* Generate n-point kinematics with all values in GF(p).
+   Same spinor construction as RandomRationalSpinors, but all
+   arithmetic is done modulo a prime p. This keeps all entries
+   as machine integers in {0,...,p-1}, avoiding rational coefficient
+   swell entirely. For use with the finite-field evaluation strategy:
+   evaluate constraints mod p → solve mod p → CRT → reconstruct. *)
+
+checkNonDegenerateMod[lam_, lamT_, n_, p_] := Module[
+  {i, j, k, subsets, sI},
+  Do[
+    If[Mod[AngleBracket[lam, i, j], p] === 0, Return[False, Module]],
+    {i, n}, {j, i + 1, n}];
+  Do[
+    If[Mod[SquareBracket[lamT, i, j], p] === 0, Return[False, Module]],
+    {i, n}, {j, i + 1, n}];
+  Do[
+    subsets = Subsets[Range[n], {k}];
+    Do[
+      sI = Mod[computeMandelstamSubset[lam, lamT, sub], p];
+      If[sI === 0, Return[False, Module]],
+      {sub, subsets}],
+    {k, 2, Floor[n/2]}];
+  True
+];
+
+RandomModularKinematics[n_Integer, p_Integer] := Module[
+  {lam, lamT, matrix, attempt},
+  Do[
+    lam = Table[{RandomInteger[{1, p - 1}], RandomInteger[{1, p - 1}]}, {n - 2}];
+    lamT = Table[{RandomInteger[{1, p - 1}], RandomInteger[{1, p - 1}]}, {n - 2}];
+    lam = Join[lam, {{1, 0}, {0, 1}}];
+    (* Momentum conservation: lamT for last two particles *)
+    matrix = Mod[Sum[Outer[Times, lam[[i]], lamT[[i]]], {i, 1, n - 2}], p];
+    lamT = Join[lamT, {Mod[-matrix[[1]], p], Mod[-matrix[[2]], p]}];
+    (* All values mod p *)
+    lam = Mod[lam, p];
+    lamT = Mod[lamT, p];
+    If[checkNonDegenerateMod[lam, lamT, n, p],
+      Return[buildModularKinAssociation[lam, lamT, n, p], Module]],
+    {attempt, 1000}];
+  $Failed
+];
+
+buildModularKinAssociation[lam_, lamT_, n_, p_] := Module[
+  {angleBrackets, squareBrackets, mandelstams, k, sub, subsets},
+  angleBrackets = Association @@ Flatten[Table[
+    {i, j} -> Mod[AngleBracket[lam, i, j], p], {i, n}, {j, i + 1, n}]];
+  squareBrackets = Association @@ Flatten[Table[
+    {i, j} -> Mod[SquareBracket[lamT, i, j], p], {i, n}, {j, i + 1, n}]];
+  mandelstams = <||>;
+  Do[subsets = Subsets[Range[n], {k}];
+    Do[mandelstams[sub] = Mod[computeMandelstamSubset[lam, lamT, sub], p],
+      {sub, subsets}],
+    {k, 2, n - 2}];
+  <|"n" -> n, "prime" -> p, "lambda" -> lam, "lambdaTilde" -> lamT,
+    "spinorProducts" -> <|"angle" -> angleBrackets, "square" -> squareBrackets|>,
+    "mandelstams" -> mandelstams|>
+];
+
+(* On-pole modular kinematics: generate generic modular kinematics,
+   then apply a BCFW shift mod p to set the desired Mandelstam to zero.
+   The shift lambda_a -> lambda_a + t*lambda_b (mod p) preserves
+   momentum conservation and on-shell conditions. *)
+RandomModularKinematicsOnPole[n_Integer, poles_List, p_Integer] := Module[
+  {twoPoles, lam, lamT, pole, complement, sI, a, b, j, denom, tStar,
+   attempt, newLam},
+  twoPoles = Select[Sort /@ poles, Length[#] == 2 &];
+  Do[
+    (* Start from non-degenerate generic kinematics *)
+    Module[{kin0 = RandomModularKinematics[n, p]},
+      If[kin0 === $Failed, Continue[]];
+      lam = kin0["lambda"]; lamT = kin0["lambdaTilde"];
+    ];
+    (* For each 2-particle pole, apply BCFW shift mod p *)
+    Module[{ok = True},
+      Do[
+        complement = Complement[Range[n], pole];
+        a = pole[[1]]; b = complement[[1]];
+        sI = Mod[computeMandelstamSubset[lam, lamT, pole], p];
+        If[sI === 0, Continue[]]; (* Already on pole *)
+        denom = Mod[Sum[
+          AngleBracket[lam, a, j] * SquareBracket[lamT, b, j],
+          {j, DeleteCases[pole, a]}], p];
+        If[Mod[denom, p] === 0, ok = False; Break[]];
+        tStar = Mod[-sI * PowerMod[denom, -1, p], p];
+        newLam = lam;
+        newLam[[a]] = Mod[lam[[a]] + tStar * lamT[[b]] (* wrong: should shift lamTilde *), p];
+        (* BCFW: lamTilde_a -> lamTilde_a + t*lamTilde_b,
+                 lambda_b -> lambda_b - t*lambda_a *)
+        lamT[[a]] = Mod[lamT[[a]] + tStar * lamT[[b]], p];
+        lam[[b]] = Mod[lam[[b]] - tStar * lam[[a]], p],
+        {pole, twoPoles}];
+      If[!ok, Continue[]];
+    ];
+    (* Verify poles vanish mod p *)
+    If[AllTrue[twoPoles,
+        Mod[computeMandelstamSubset[lam, lamT, #], p] === 0 &],
+      Return[buildModularKinAssociation[lam, lamT, n, p], Module]],
+    {attempt, 1000}];
+  $Failed
 ];
 
 End[];
