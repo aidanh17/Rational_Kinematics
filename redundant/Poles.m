@@ -109,7 +109,8 @@ applyBCFWShiftForPole[lam_, lamT_, poleSet_List, n_Integer,
 
 (* ---- Validation for pole kinematics ---- *)
 
-validatePoleKinematics[lam_, lamT_, n_, poles_, poleTypes_, twoPoles_] :=
+validatePoleKinematics[lam_, lamT_, n_, poles_, poleTypes_, twoPoles_,
+    nonDeg_ : True] :=
   Module[
     {expectedZeroSubsets, complementSub, sub, sI, k, subsets,
      pole, i, j, ab, sb},
@@ -144,22 +145,24 @@ validatePoleKinematics[lam_, lamT_, n_, poles_, poleTypes_, twoPoles_] :=
       ];
     , {pole, twoPoles}];
 
-    Do[
-      subsets = Subsets[Range[n], {k}];
+    If[nonDeg,
       Do[
-        If[!MemberQ[expectedZeroSubsets, sub],
-          sI = computeMandelstamSubset[lam, lamT, sub];
-          If[sI === 0, Return[False, Module]];
-        ];
-      , {sub, subsets}];
-    , {k, 2, Floor[n/2]}];
+        subsets = Subsets[Range[n], {k}];
+        Do[
+          If[!MemberQ[expectedZeroSubsets, sub],
+            sI = computeMandelstamSubset[lam, lamT, sub];
+            If[sI === 0, Return[False, Module]];
+          ];
+        , {sub, subsets}];
+      , {k, 2, Floor[n/2]}];
 
-    Do[
-      If[!MemberQ[twoPoles, Sort[{i, j}]],
-        If[AngleBracket[lam, i, j] === 0, Return[False, Module]];
-        If[SquareBracket[lamT, i, j] === 0, Return[False, Module]];
-      ];
-    , {i, n}, {j, i + 1, n}];
+      Do[
+        If[!MemberQ[twoPoles, Sort[{i, j}]],
+          If[AngleBracket[lam, i, j] === 0, Return[False, Module]];
+          If[SquareBracket[lamT, i, j] === 0, Return[False, Module]];
+        ];
+      , {i, n}, {j, i + 1, n}];
+    ];
 
     True
   ];
@@ -196,13 +199,14 @@ buildKinematicsAssociation[lam_, lamT_, n_] := Module[
 
 Options[RandomRationalKinematicsOnPole] = {
   "TwoParticlePoleType" -> "Random",
+  "NonDegenerate" -> True,
   "Range" -> 9,
   "MaxAttempts" -> 1000
 };
 
 RandomRationalKinematicsOnPole[n_Integer, poles_List, opts : OptionsPattern[]] :=
   Module[
-    {range, maxAttempts, poleTypeOpt,
+    {range, maxAttempts, poleTypeOpt, nonDeg,
      twoPoles, multiPoles, poleTypes,
      anglePairs, squarePairs, angleGroups, squareGroups,
      allParticlesInAngleGroups, allParticlesInSquareGroups,
@@ -219,6 +223,7 @@ RandomRationalKinematicsOnPole[n_Integer, poles_List, opts : OptionsPattern[]] :
     range = OptionValue[RandomRationalKinematicsOnPole, {opts}, "Range"];
     maxAttempts = OptionValue[RandomRationalKinematicsOnPole, {opts}, "MaxAttempts"];
     poleTypeOpt = OptionValue[RandomRationalKinematicsOnPole, {opts}, "TwoParticlePoleType"];
+    nonDeg = OptionValue[RandomRationalKinematicsOnPole, {opts}, "NonDegenerate"];
 
     (* Sort and validate poles *)
     sortedPoles = Sort /@ poles;
@@ -425,7 +430,7 @@ RandomRationalKinematicsOnPole[n_Integer, poles_List, opts : OptionsPattern[]] :
       If[!valid, Continue[]];
 
       (* ---- Validate all constraints ---- *)
-      If[validatePoleKinematics[lam, lamT, n, sortedPoles, poleTypes, twoPoles],
+      If[validatePoleKinematics[lam, lamT, n, sortedPoles, poleTypes, twoPoles, nonDeg],
         Return[
           buildKinematicsAssociation[lam, lamT, n],
           Module

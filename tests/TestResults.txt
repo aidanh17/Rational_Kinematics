@@ -1,10 +1,10 @@
 EXTKIN Test Results
 ==================
-Date: Thu 19 Mar 2026 22:30:55
+Date: Mon 24 Mar 2026
 
-Total passed: 34
+Total passed: 42
 Total failed: 0
-Total tests:  34
+Total tests:  42
 
 --- All Tests ---
 PASS: Basic n=4 (50 trials)
@@ -41,3 +41,11 @@ PASS: Regression: 5-point spinors match original algorithm
 PASS: Regression: 6-point spinors match original algorithm
 PASS: Regression: 6-point Mandelstams match original repstospin
 PASS: Regression: 6-point angle pole matches original construction
+PASS: Cross-check: momentum conservation on pole kinematics (n=6,7,8)
+PASS: Cross-check: pole s_I=0 and non-pole s_I!=0 (n=7, poles={{1,2},{3,4,5}})
+PASS: Cross-check: row sums vanish on pole kinematics (n=6, s_{123}=0)
+PASS: Cross-check: complement identity s_I = s_{I^c} on pole kinematics (n=7)
+PASS: NonDegenerate->True on pole kinematics prevents accidental zeros (n=6)
+PASS: NonDegenerate->False: poles still vanish, momentum conserved (n=6)
+PASS: Cross-check: ValidateKinematics passes on pole kinematics (n=6,7,8)
+PASS: Cross-check: IsNonDegenerate with expected poles (n=7)

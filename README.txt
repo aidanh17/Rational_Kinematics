@@ -89,6 +89,10 @@ PUBLIC FUNCTIONS
                               "Angle"   Set <ij> = 0 for all two-particle poles
                               "Square"  Set [ij] = 0 for all two-particle poles
                               {rules}   Per-pole: {{1,2} -> "Angle", {3,4} -> "Square"}
+     "NonDegenerate" -> True   (default) Resample if any non-pole Mandelstam s_I
+                                accidentally vanishes or any non-pole bracket
+                                <ij> or [ij] is zero. When False, only the
+                                requested pole constraints are validated.
      "Range" -> 9
      "MaxAttempts" -> 1000
 
@@ -101,7 +105,8 @@ PUBLIC FUNCTIONS
        momentum conservation and on-shell conditions
      - Multiple poles: handled sequentially with careful choice of shift
        particles to avoid breaking previously imposed constraints
-     - Validated internally: all poles vanish, non-pole Mandelstams nonzero
+     - Validated internally: all poles vanish; when NonDegenerate is True
+       (default), non-pole Mandelstams and brackets are also checked nonzero
 
 8. ValidateKinematics[kin]
    --------------------------------
@@ -373,7 +378,7 @@ KNOWN LIMITATIONS AND CAVEATS
 TEST SUITE
 ================================================================================
 
-Tests.m contains a comprehensive test suite organized in three sections:
+Tests.m contains a comprehensive test suite organized in four sections:
 
 Section 1 -- Basic tests (n = 4, 5, 6, 7, 8, 10):
   50 random points per multiplicity, checking:
@@ -399,13 +404,19 @@ Section 3 -- Regression tests:
   - Mandelstam values match original repstospin rule
   - Angle pole construction matches original method
 
+Section 4 -- Cross-check tests:
+  - Momentum conservation on pole kinematics (n=6,7,8)
+  - Pole Mandelstams exactly zero, non-pole Mandelstams nonzero (n=7)
+  - Row sum identity on pole kinematics (n=6, s_{123}=0)
+  - Complement identity s_I = s_{I^c} on pole kinematics (n=7)
+  - NonDegenerate->True prevents accidental zeros (n=6, 50 trials)
+  - NonDegenerate->False still validates poles and momentum conservation
+  - ValidateKinematics passes on pole kinematics (n=6,7,8)
+  - IsNonDegenerate cross-check with expected pole exclusions (n=7)
+
 To run: open Mathematica and execute
   Get["path/to/EXTKIN/tests/Tests.m"]
 Results are written to EXTKIN/tests/TestResults.txt.
-
-Note: WolframScript/Mathematica was not available in the build environment,
-so tests have not been pre-run. The code has been carefully verified for
-correctness against the original implementations.
 
 ================================================================================
 USAGE EXAMPLES

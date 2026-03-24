@@ -53,8 +53,9 @@ RandomRationalKinematicsOnPole::usage =
   "RandomRationalKinematicsOnPole[n, poles] generates rational kinematics \
 where specified Mandelstam invariants vanish exactly. poles is a list of \
 subsets, e.g. {{1,2}, {3,4,5}}. Options: \"TwoParticlePoleType\" \
-(\"Random\"/\"Angle\"/\"Square\" or per-pole rules), \"Range\" (9), \
-\"MaxAttempts\" (1000).";
+(\"Random\"/\"Angle\"/\"Square\" or per-pole rules), \"NonDegenerate\" \
+(True, resamples if any non-pole Mandelstam accidentally vanishes), \
+\"Range\" (9), \"MaxAttempts\" (1000).";
 
 (* Validation.m *)
 ValidateKinematics::usage =

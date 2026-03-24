@@ -514,7 +514,214 @@ Module[{epm = {{0, 1}, {-1, 0}}, testName, failMsg = "",
 ];
 
 (* ============================================================ *)
-(* 4. Write results to TestResults.txt                          *)
+(* 4. CROSS-CHECK TESTS                                         *)
+(* ============================================================ *)
+
+Print["\n--- Section 4: Cross-check tests ---"];
+
+(* 4a. Momentum conservation cross-check for on-pole kinematics *)
+Module[{testName = "Cross-check: momentum conservation on pole kinematics (n=6,7,8)",
+        failMsg = "", kin, lam, lamT, nn, trial, momSum, poles, i},
+  Do[
+    poles = If[nn == 6, {{1, 2}}, If[nn == 7, {{1, 2}, {3, 4, 5}}, {{1, 2}, {3, 4}}]];
+    Do[
+      kin = RandomRationalKinematicsOnPole[nn, poles,
+        "TwoParticlePoleType" -> "Angle"];
+      If[kin === $Failed, failMsg = "$Failed at n=" <> ToString[nn]; Break[]];
+      lam = kin["lambda"]; lamT = kin["lambdaTilde"];
+      momSum = Sum[Outer[Times, lam[[i]], lamT[[i]]], {i, nn}];
+      If[momSum =!= {{0, 0}, {0, 0}},
+        failMsg = "Momentum conservation failed at n=" <> ToString[nn] <>
+                  " trial " <> ToString[trial];
+        Break[]];
+    , {trial, 1, 20}];
+    If[failMsg =!= "", Break[]];
+  , {nn, {6, 7, 8}}];
+  If[failMsg === "",
+    recordTest[testName, True]; Print["  PASS: " <> testName],
+    recordTest[testName, False, failMsg]; Print["  FAIL: " <> testName <> " - " <> failMsg]];
+];
+
+(* 4b. Pole Mandelstams are exactly zero, non-pole are nonzero *)
+Module[{testName = "Cross-check: pole s_I=0 and non-pole s_I!=0 (n=7, poles={{1,2},{3,4,5}})",
+        failMsg = "", kin, lam, lamT, nn = 7, trial, k, sub, subsets, sI,
+        poles = {{1, 2}, {3, 4, 5}}, expectedZeros},
+  expectedZeros = Union[{Sort[{1, 2}], Sort[{3, 4, 5}],
+    Sort[Complement[Range[7], {1, 2}]], Sort[Complement[Range[7], {3, 4, 5}]]}];
+  Do[
+    kin = RandomRationalKinematicsOnPole[nn, poles,
+      "TwoParticlePoleType" -> "Angle"];
+    If[kin === $Failed, failMsg = "$Failed at trial " <> ToString[trial]; Break[]];
+    lam = kin["lambda"]; lamT = kin["lambdaTilde"];
+    (* Check expected zeros are zero *)
+    Do[
+      sI = sFromSpinors[lam, lamT, sub];
+      If[sI =!= 0,
+        failMsg = "Expected zero s_" <> ToString[sub] <> " = " <> ToString[sI]; Break[]];
+    , {sub, expectedZeros}];
+    If[failMsg =!= "", Break[]];
+    (* Check non-pole subsets are nonzero *)
+    Do[
+      subsets = Subsets[Range[nn], {k}];
+      Do[
+        If[!MemberQ[expectedZeros, sub],
+          sI = sFromSpinors[lam, lamT, sub];
+          If[sI === 0,
+            failMsg = "Accidental zero s_" <> ToString[sub]; Break[]]];
+      , {sub, subsets}];
+      If[failMsg =!= "", Break[]];
+    , {k, 2, Floor[nn/2]}];
+    If[failMsg =!= "", Break[]];
+  , {trial, 1, 20}];
+  If[failMsg === "",
+    recordTest[testName, True]; Print["  PASS: " <> testName],
+    recordTest[testName, False, failMsg]; Print["  FAIL: " <> testName <> " - " <> failMsg]];
+];
+
+(* 4c. Row sum identity on pole kinematics *)
+Module[{testName = "Cross-check: row sums vanish on pole kinematics (n=6, s_{123}=0)",
+        failMsg = "", kin, lam, lamT, nn = 6, trial, i, j, rowSum},
+  Do[
+    kin = RandomRationalKinematicsOnPole[nn, {{1, 2, 3}}];
+    If[kin === $Failed, failMsg = "$Failed at trial " <> ToString[trial]; Break[]];
+    lam = kin["lambda"]; lamT = kin["lambdaTilde"];
+    Do[
+      rowSum = Sum[
+        AngleBracket[lam, i, j] * SquareBracket[lamT, i, j],
+        {j, DeleteCases[Range[nn], i]}];
+      If[rowSum =!= 0,
+        failMsg = "Row sum for particle " <> ToString[i] <> " = " <> ToString[rowSum];
+        Break[]];
+    , {i, nn}];
+    If[failMsg =!= "", Break[]];
+  , {trial, 1, 20}];
+  If[failMsg === "",
+    recordTest[testName, True]; Print["  PASS: " <> testName],
+    recordTest[testName, False, failMsg]; Print["  FAIL: " <> testName <> " - " <> failMsg]];
+];
+
+(* 4d. Complement identity on pole kinematics *)
+Module[{testName = "Cross-check: complement identity s_I = s_{I^c} on pole kinematics (n=7)",
+        failMsg = "", kin, lam, lamT, nn = 7, trial, k, sub, subsets, sI, sComp, comp},
+  Do[
+    kin = RandomRationalKinematicsOnPole[nn, {{1, 2}},
+      "TwoParticlePoleType" -> "Square"];
+    If[kin === $Failed, failMsg = "$Failed at trial " <> ToString[trial]; Break[]];
+    lam = kin["lambda"]; lamT = kin["lambdaTilde"];
+    Do[
+      subsets = Subsets[Range[nn], {k}];
+      Do[
+        sI = sFromSpinors[lam, lamT, sub];
+        comp = Complement[Range[nn], sub];
+        If[Length[comp] >= 2,
+          sComp = sFromSpinors[lam, lamT, comp];
+          If[sI =!= sComp,
+            failMsg = "s_" <> ToString[sub] <> " != s_" <> ToString[comp];
+            Break[]]];
+      , {sub, subsets}];
+      If[failMsg =!= "", Break[]];
+    , {k, 2, Floor[nn/2]}];
+    If[failMsg =!= "", Break[]];
+  , {trial, 1, 20}];
+  If[failMsg === "",
+    recordTest[testName, True]; Print["  PASS: " <> testName],
+    recordTest[testName, False, failMsg]; Print["  FAIL: " <> testName <> " - " <> failMsg]];
+];
+
+(* 4e. NonDegenerate option: True (default) guarantees no accidental zeros *)
+Module[{testName = "NonDegenerate->True on pole kinematics prevents accidental zeros (n=6)",
+        failMsg = "", kin, lam, lamT, nn = 6, trial, k, sub, subsets, sI,
+        expectedZeros},
+  expectedZeros = {{1, 2}, Sort[Complement[Range[6], {1, 2}]]};
+  Do[
+    kin = RandomRationalKinematicsOnPole[nn, {{1, 2}},
+      "TwoParticlePoleType" -> "Angle", "NonDegenerate" -> True];
+    If[kin === $Failed, failMsg = "$Failed at trial " <> ToString[trial]; Break[]];
+    lam = kin["lambda"]; lamT = kin["lambdaTilde"];
+    Do[
+      subsets = Subsets[Range[nn], {k}];
+      Do[
+        If[!MemberQ[expectedZeros, sub],
+          sI = sFromSpinors[lam, lamT, sub];
+          If[sI === 0,
+            failMsg = "Accidental zero s_" <> ToString[sub] <> " despite NonDegenerate->True";
+            Break[]]];
+      , {sub, subsets}];
+      If[failMsg =!= "", Break[]];
+    , {k, 2, Floor[nn/2]}];
+    If[failMsg =!= "", Break[]];
+  , {trial, 1, 50}];
+  If[failMsg === "",
+    recordTest[testName, True]; Print["  PASS: " <> testName],
+    recordTest[testName, False, failMsg]; Print["  FAIL: " <> testName <> " - " <> failMsg]];
+];
+
+(* 4f. NonDegenerate->False still produces valid pole kinematics *)
+Module[{testName = "NonDegenerate->False: poles still vanish, momentum conserved (n=6)",
+        failMsg = "", kin, lam, lamT, nn = 6, trial, sI12, momSum, i},
+  Do[
+    kin = RandomRationalKinematicsOnPole[nn, {{1, 2}},
+      "TwoParticlePoleType" -> "Angle", "NonDegenerate" -> False];
+    If[kin === $Failed, failMsg = "$Failed at trial " <> ToString[trial]; Break[]];
+    lam = kin["lambda"]; lamT = kin["lambdaTilde"];
+    (* Pole must still vanish *)
+    sI12 = sFromSpinors[lam, lamT, {1, 2}];
+    If[sI12 =!= 0,
+      failMsg = "s_{12} = " <> ToString[sI12] <> " != 0"; Break[]];
+    (* Momentum must still be conserved *)
+    momSum = Sum[Outer[Times, lam[[i]], lamT[[i]]], {i, nn}];
+    If[momSum =!= {{0, 0}, {0, 0}},
+      failMsg = "Momentum conservation failed"; Break[]];
+  , {trial, 1, 20}];
+  If[failMsg === "",
+    recordTest[testName, True]; Print["  PASS: " <> testName],
+    recordTest[testName, False, failMsg]; Print["  FAIL: " <> testName <> " - " <> failMsg]];
+];
+
+(* 4g. ValidateKinematics cross-check on pole kinematics *)
+Module[{testName = "Cross-check: ValidateKinematics passes on pole kinematics (n=6,7,8)",
+        failMsg = "", kin, nn, trial, vResult, poles},
+  Do[
+    poles = If[nn == 6, {{1, 2, 3}}, If[nn == 7, {{1, 2}, {3, 4}}, {{1, 2}, {4, 5, 6}}]];
+    Do[
+      kin = RandomRationalKinematicsOnPole[nn, poles,
+        "TwoParticlePoleType" -> "Angle"];
+      If[kin === $Failed, failMsg = "$Failed at n=" <> ToString[nn]; Break[]];
+      vResult = ValidateKinematics[kin];
+      If[vResult =!= True,
+        failMsg = "ValidateKinematics failed at n=" <> ToString[nn] <>
+                  ": " <> ToString[vResult[[2]]];
+        Break[]];
+    , {trial, 1, 10}];
+    If[failMsg =!= "", Break[]];
+  , {nn, {6, 7, 8}}];
+  If[failMsg === "",
+    recordTest[testName, True]; Print["  PASS: " <> testName],
+    recordTest[testName, False, failMsg]; Print["  FAIL: " <> testName <> " - " <> failMsg]];
+];
+
+(* 4h. IsNonDegenerate cross-check with expected poles *)
+Module[{testName = "Cross-check: IsNonDegenerate with expected poles (n=7)",
+        failMsg = "", kin, nn = 7, trial, poles = {{1, 2}, {3, 4, 5}}},
+  Do[
+    kin = RandomRationalKinematicsOnPole[nn, poles,
+      "TwoParticlePoleType" -> "Angle"];
+    If[kin === $Failed, failMsg = "$Failed at trial " <> ToString[trial]; Break[]];
+    (* Should be non-degenerate when expected poles are excluded *)
+    If[!IsNonDegenerate[kin, poles],
+      failMsg = "IsNonDegenerate[kin, poles] returned False"; Break[]];
+    (* Should be degenerate without excluding poles *)
+    If[IsNonDegenerate[kin],
+      failMsg = "IsNonDegenerate[kin] returned True (expected False because poles are zero)";
+      Break[]];
+  , {trial, 1, 20}];
+  If[failMsg === "",
+    recordTest[testName, True]; Print["  PASS: " <> testName],
+    recordTest[testName, False, failMsg]; Print["  FAIL: " <> testName <> " - " <> failMsg]];
+];
+
+(* ============================================================ *)
+(* 5. Write results to TestResults.txt                          *)
 (* ============================================================ *)
 
 Print["\n--- Writing results ---"];

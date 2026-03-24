@@ -22,7 +22,7 @@ MomentumFromSpinors::usage = "MomentumFromSpinors[lam, lamT] returns 2x2 momentu
 RandomRationalSpinors::usage = "RandomRationalSpinors[n] generates n rational spinor pairs with exact momentum conservation.";
 MandelstamFromSpinors::usage = "MandelstamFromSpinors[lam, lamT] computes all Mandelstam invariants.";
 RandomRationalKinematics::usage = "RandomRationalKinematics[n] generates a complete rational kinematic point.";
-RandomRationalKinematicsOnPole::usage = "RandomRationalKinematicsOnPole[n, poles] generates kinematics with specified Mandelstams vanishing.";
+RandomRationalKinematicsOnPole::usage = "RandomRationalKinematicsOnPole[n, poles] generates kinematics with specified Mandelstams vanishing. Option \"NonDegenerate\" (default True) resamples if any non-pole Mandelstam accidentally vanishes.";
 ValidateKinematics::usage = "ValidateKinematics[kin] checks all kinematic identities.";
 IsNonDegenerate::usage = "IsNonDegenerate[kin] returns True if all brackets and Mandelstams are non-zero. IsNonDegenerate[kin, expectedZeroPoles] excludes specified poles from the check.";
 RandomModularKinematics::usage = "RandomModularKinematics[n, p] generates a complete n-point kinematic point over GF(p). All spinor components, brackets, and Mandelstams are integers mod p. For finite-field linear algebra: evaluate constraints mod p, solve mod p, repeat for multiple primes, reconstruct via CRT.";
@@ -188,7 +188,8 @@ applyBCFWShiftForPole[lam_, lamT_, poleSet_List, n_Integer,
     $Failed
   ];
 
-validatePoleKinematics[lam_, lamT_, n_, poles_, poleTypes_, twoPoles_] :=
+validatePoleKinematics[lam_, lamT_, n_, poles_, poleTypes_, twoPoles_,
+    nonDeg_ : True] :=
   Module[{expectedZeroSubsets, complementSub, sub, sI, k, subsets, pole, i, j, ab, sb},
     expectedZeroSubsets = {};
     Do[AppendTo[expectedZeroSubsets, Sort[pole]];
@@ -207,16 +208,18 @@ validatePoleKinematics[lam_, lamT_, n_, poles_, poleTypes_, twoPoles_] :=
         {i, j} = Sort[pole]; ab = AngleBracket[lam, i, j]; sb = SquareBracket[lamT, i, j];
         If[sb =!= 0 || ab === 0, Return[False, Module]]];
     , {pole, twoPoles}];
-    Do[subsets = Subsets[Range[n], {k}];
-       Do[If[!MemberQ[expectedZeroSubsets, sub],
-             sI = computeMandelstamSubset[lam, lamT, sub];
-             If[sI === 0, Return[False, Module]]],
-          {sub, subsets}];
-    , {k, 2, Floor[n/2]}];
-    Do[If[!MemberQ[twoPoles, Sort[{i, j}]],
-         If[AngleBracket[lam, i, j] === 0, Return[False, Module]];
-         If[SquareBracket[lamT, i, j] === 0, Return[False, Module]]];
-    , {i, n}, {j, i + 1, n}];
+    If[nonDeg,
+      Do[subsets = Subsets[Range[n], {k}];
+         Do[If[!MemberQ[expectedZeroSubsets, sub],
+               sI = computeMandelstamSubset[lam, lamT, sub];
+               If[sI === 0, Return[False, Module]]],
+            {sub, subsets}];
+      , {k, 2, Floor[n/2]}];
+      Do[If[!MemberQ[twoPoles, Sort[{i, j}]],
+           If[AngleBracket[lam, i, j] === 0, Return[False, Module]];
+           If[SquareBracket[lamT, i, j] === 0, Return[False, Module]]];
+      , {i, n}, {j, i + 1, n}];
+    ];
     True
   ];
 
@@ -234,11 +237,12 @@ buildKinematicsAssociation[lam_, lamT_, n_] := Module[
 ];
 
 Options[RandomRationalKinematicsOnPole] = {
-  "TwoParticlePoleType" -> "Random", "Range" -> 9, "MaxAttempts" -> 1000};
+  "TwoParticlePoleType" -> "Random", "NonDegenerate" -> True,
+  "Range" -> 9, "MaxAttempts" -> 1000};
 
 RandomRationalKinematicsOnPole[n_Integer, poles_List, opts : OptionsPattern[]] :=
   Module[
-    {range, maxAttempts, poleTypeOpt,
+    {range, maxAttempts, poleTypeOpt, nonDeg,
      twoPoles, multiPoles, poleTypes,
      anglePairs, squarePairs, angleGroups, squareGroups,
      allParticlesInAngleGroups, allParticlesInSquareGroups,
@@ -251,6 +255,7 @@ RandomRationalKinematicsOnPole[n_Integer, poles_List, opts : OptionsPattern[]] :
     range = OptionValue[RandomRationalKinematicsOnPole, {opts}, "Range"];
     maxAttempts = OptionValue[RandomRationalKinematicsOnPole, {opts}, "MaxAttempts"];
     poleTypeOpt = OptionValue[RandomRationalKinematicsOnPole, {opts}, "TwoParticlePoleType"];
+    nonDeg = OptionValue[RandomRationalKinematicsOnPole, {opts}, "NonDegenerate"];
 
     (* Validate and deduplicate poles *)
     sortedPoles = Sort /@ poles;
@@ -370,7 +375,7 @@ RandomRationalKinematicsOnPole[n_Integer, poles_List, opts : OptionsPattern[]] :
       If[!valid, Continue[]];
 
       (* Validate *)
-      If[validatePoleKinematics[lam, lamT, n, sortedPoles, poleTypes, twoPoles],
+      If[validatePoleKinematics[lam, lamT, n, sortedPoles, poleTypes, twoPoles, nonDeg],
         Return[buildKinematicsAssociation[lam, lamT, n], Module]];
     , {attempt, maxAttempts}];
 
