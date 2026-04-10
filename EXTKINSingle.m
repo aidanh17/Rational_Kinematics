@@ -215,6 +215,7 @@ validatePoleKinematics[lam_, lamT_, n_, poles_, poleTypes_, twoPoles_,
                If[sI === 0, Return[False, Module]]],
             {sub, subsets}];
       , {k, 2, Floor[n/2]}];
+      (* Always check that non-pole 2-particle brackets are nonzero *)
       Do[If[!MemberQ[twoPoles, Sort[{i, j}]],
            If[AngleBracket[lam, i, j] === 0, Return[False, Module]];
            If[SquareBracket[lamT, i, j] === 0, Return[False, Module]]];
@@ -274,20 +275,61 @@ RandomRationalKinematicsOnPole[n_Integer, poles_List, opts : OptionsPattern[]] :
 
     twoPoles = Select[sortedPoles, Length[#] == 2 &];
     multiPoles = Select[sortedPoles, Length[#] >= 3 &];
-    poleTypes = parseTwoParticlePoleTypes[twoPoles, poleTypeOpt];
-    anglePairs = Select[twoPoles, poleTypes[#] === "Angle" &];
-    squarePairs = Select[twoPoles, poleTypes[#] === "Square" &];
-    angleGroups = connectedComponents[anglePairs, n];
-    squareGroups = connectedComponents[squarePairs, n];
-    allParticlesInAngleGroups = If[Length[angleGroups] > 0, Union @@ angleGroups, {}];
-    allParticlesInSquareGroups = If[Length[squareGroups] > 0, Union @@ squareGroups, {}];
 
-    (* Choose solve particles: not in angle groups, prefer free from square groups too *)
-    freeAngParticles = Complement[Range[n], allParticlesInAngleGroups];
-    If[Length[freeAngParticles] < 2,
+    (* Assign pole types and compute groups/solve particles.
+       For "Random", wrap in an outer retry that re-randomizes types. *)
+    Module[{typeAttempt, maxTypeAttempts = If[poleTypeOpt === "Random", 20, 1],
+            setupOK = False},
+    Do[
+      poleTypes = parseTwoParticlePoleTypes[twoPoles, poleTypeOpt];
+      anglePairs = Select[twoPoles, poleTypes[#] === "Angle" &];
+      squarePairs = Select[twoPoles, poleTypes[#] === "Square" &];
+      angleGroups = connectedComponents[anglePairs, n];
+      squareGroups = connectedComponents[squarePairs, n];
+      allParticlesInAngleGroups = If[Length[angleGroups] > 0, Union @@ angleGroups, {}];
+      allParticlesInSquareGroups = If[Length[squareGroups] > 0, Union @@ squareGroups, {}];
+
+      freeAngParticles = Complement[Range[n], allParticlesInAngleGroups];
+
+      (* Auto-flip: if angle groups consume too many particles, iteratively
+         flip angle pairs to square-type. Only for random/unspecified types. *)
+      If[Length[freeAngParticles] < 2 && Length[anglePairs] > 0 &&
+         (poleTypeOpt === "Random" || !StringQ[poleTypeOpt]),
+        Module[{multiParticles, bestPair, bestFree, testFree, testAngPairs, testGroups},
+          multiParticles = If[Length[multiPoles] > 0, Union @@ multiPoles, {}];
+          While[Length[freeAngParticles] < 2 && Length[anglePairs] > 0,
+            bestPair = Null; bestFree = -1;
+            Do[
+              testAngPairs = DeleteCases[anglePairs, pair];
+              testGroups = connectedComponents[testAngPairs, n];
+              testFree = Length[Complement[Range[n],
+                If[Length[testGroups] > 0, Union @@ testGroups, {}]]];
+              If[testFree > bestFree ||
+                 (testFree === bestFree && Length[Intersection[pair, multiParticles]] === 0),
+                bestFree = testFree; bestPair = pair],
+              {pair, anglePairs}];
+            If[bestPair === Null, Break[]];
+            poleTypes[bestPair] = "Square";
+            anglePairs = Select[twoPoles, poleTypes[#] === "Angle" &];
+            squarePairs = Select[twoPoles, poleTypes[#] === "Square" &];
+            angleGroups = connectedComponents[anglePairs, n];
+            squareGroups = connectedComponents[squarePairs, n];
+            allParticlesInAngleGroups = If[Length[angleGroups] > 0, Union @@ angleGroups, {}];
+            allParticlesInSquareGroups = If[Length[squareGroups] > 0, Union @@ squareGroups, {}];
+            freeAngParticles = Complement[Range[n], allParticlesInAngleGroups];
+          ];
+        ]
+      ];
+
+      If[Length[freeAngParticles] >= 2, setupOK = True; Break[]],
+      {typeAttempt, maxTypeAttempts}
+    ];
+    If[!setupOK,
       Message[RandomRationalKinematicsOnPole::failed, 0,
         "Too many angle-type poles: cannot find 2 particles with independent angle spinors"];
       Return[$Failed]];
+    ];
+
     freeAllParticles = Complement[freeAngParticles, allParticlesInSquareGroups];
     solveParticles = Which[
       Length[freeAllParticles] >= 2, Take[freeAllParticles, 2],
